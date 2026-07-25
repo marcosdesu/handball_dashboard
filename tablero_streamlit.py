@@ -5,6 +5,7 @@ import matplotlib.image as mpimg
 import numpy as np
 from scipy.ndimage import gaussian_filter
 from streamlit_autorefresh import st_autorefresh
+import time
 
 # ==========================================
 # CONFIGURACIÓN DE LA PÁGINA
@@ -18,7 +19,7 @@ COLOR_LOC = 'green'
 COLOR_VIS = 'blue'
 
 # URL OFICIAL DE TU GOOGLE SHEET
-URL_GOOGLE_SHEET = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT-7qq_XxqcKG6Lb4YewwOeVF8M1Atyh9qRvG7uqI4lGAQMCSD4pyTNScIQsDVAh_UAScQEG6jPg3W1/pub?gid=0&single=true&output=csv"
+URL_BASE = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT-7qq_XxqcKG6Lb4YewwOeVF8M1Atyh9qRvG7uqI4lGAQMCSD4pyTNScIQsDVAh_UAScQEG6jPg3W1/pub?gid=0&single=true&output=csv"
 
 # ==========================================
 # 0. AUTO-REFRESCO (Cada 5 segundos = 5000 ms)
@@ -26,21 +27,22 @@ URL_GOOGLE_SHEET = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT-7qq_XxqcK
 st_autorefresh(interval=5000, limit=None, key="data_refresh")
 
 # ==========================================
-# 1. CONEXIÓN A DATOS
+# 1. CONEXIÓN A DATOS (Sin Caché para forzar tiempo real)
 # ==========================================
-@st.cache_data(ttl=2) 
-def load_data(url):
+def load_data():
     try:
-        df_temp = pd.read_csv(url)
+        # Se agrega un timestamp a la URL para burlar el caché de 5 minutos de Google Sheets
+        url_nocache = f"{URL_BASE}&_t={int(time.time())}"
+        df_temp = pd.read_csv(url_nocache)
         df_temp = df_temp.dropna(how='all')
         return df_temp
     except Exception as e:
         return pd.DataFrame(columns=['Equipo', 'Fase', 'Resultado', 'Tiempo', 'Periodo', 'Lado', 'Coord Lado', 'Zona', 'Coord Porteria'])
 
-df_vivo = load_data(URL_GOOGLE_SHEET)
+df_vivo = load_data()
 
 # ==========================================
-# 2. FILTROS INTERACTIVOS
+# 2. FILTROS INTERACTIVOS DINÁMICOS
 # ==========================================
 st.sidebar.header("Filtros del Partido")
 
@@ -57,6 +59,7 @@ fase_sel = st.sidebar.selectbox("2. Fase de Juego", lista_fases)
 resultado_sel = st.sidebar.selectbox("3. ¿Qué pasó?", lista_resultados)
 lado_sel = st.sidebar.selectbox("4. Lado de la Cancha", lista_lados)
 
+# Aplicar filtros
 df = df_vivo.copy()
 if not df.empty:
     if equipo_sel != 'Todos': df = df[df['Equipo'] == equipo_sel]
@@ -65,21 +68,30 @@ if not df.empty:
     if lado_sel != 'Todos': df = df[df['Lado'] == lado_sel]
 
 # ==========================================
-# 3. MÉTRICAS RÁPIDAS
+# 3. MÉTRICAS SEPARADAS POR EQUIPO
 # ==========================================
-col1, col2, col3, col4 = st.columns(4)
-if not df.empty and 'Resultado' in df.columns:
-    col1.metric("Goles", len(df[df['Resultado'] == 'Gol']))
-    col2.metric("Paradas", len(df[df['Resultado'] == 'Parada']))
-    col3.metric("Fallos", len(df[df['Resultado'] == 'Fallo']))
-    col4.metric("Pérdidas", len(df[df['Resultado'] == 'Perdida']))
+st.markdown("### 📊 Rendimiento por Equipo")
+
+if not df.empty and 'Equipo' in df.columns:
+    equipos_presentes = df['Equipo'].dropna().unique()
+    
+    for eq in equipos_presentes:
+        st.markdown(f"**Estadísticas: {eq}**")
+        df_eq = df[df['Equipo'] == eq]
+        
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Goles", len(df_eq[df_eq['Resultado'] == 'Gol']))
+        c2.metric("Paradas", len(df_eq[df_eq['Resultado'] == 'Parada']))
+        c3.metric("Fallos", len(df_eq[df_eq['Resultado'] == 'Fallo']))
+        c4.metric("Pérdidas", len(df_eq[df_eq['Resultado'] == 'Perdida']))
+        st.write("") # Espaciador
 else:
-    col1.metric("Goles", 0); col2.metric("Paradas", 0); col3.metric("Fallos", 0); col4.metric("Pérdidas", 0)
+    st.info("Esperando datos del partido para calcular métricas...")
 
 st.divider()
 
 # ==========================================
-# 4. FUNCIONES DE DIBUJO (Con Ejes Corregidos)
+# 4. FUNCIONES DE DIBUJO (Idénticas a Colab)
 # ==========================================
 def plot_cancha(df_filtrado):
     fig, ax = plt.subplots(figsize=(6, 10))
@@ -113,10 +125,6 @@ def plot_cancha(df_filtrado):
         ax.scatter(goles['PX'], goles['PY'], c='#00e676', s=120, edgecolors='black', linewidth=1.5)
 
     ax.set_title('Mapa de Ataque', fontweight='bold', fontsize=14, pad=15)
-    
-    # ¡LA CORRECCIÓN CLAVE! Forzar los ejes para alinear clics con la imagen
-    ax.set_xlim(0, 100)
-    ax.set_ylim(100, 0)
     ax.axis('off')
     return fig
 
@@ -146,15 +154,12 @@ def plot_porteria(df_filtrado):
             ax.imshow(heatmap_suave, extent=[0, 100, 100, 0], cmap='inferno', alpha=0.65)
 
     ax.set_title('Vulnerabilidad en Portería (Goles)', fontweight='bold', fontsize=14, pad=15)
-    
-    # CORRECCIÓN DE EJES
     ax.set_xlim(0, 100)
     ax.set_ylim(100, 0)
     ax.axis('off')
     return fig
 
 def plot_momentum(df_all):
-    # La gráfica de momentum SIEMPRE lee el partido completo sin importar los filtros de arriba
     df_mom = df_all.copy()
     
     def convertir_a_minutos(row):
@@ -174,9 +179,10 @@ def plot_momentum(df_all):
     df_mom['match_min'] = df_mom.apply(convertir_a_minutos, axis=1)
     goles_df = df_mom[df_mom['Resultado'].astype(str).str.strip().str.lower() == 'gol'].sort_values('match_min')
     
+    # Extraer equipos reales registrados en la base de datos
     equipos = df_mom['Equipo'].dropna().unique()
-    equipo_local = equipos[0] if len(equipos) > 0 else 'LOC'
-    equipo_visitante = equipos[1] if len(equipos) > 1 else 'VIS'
+    equipo_local = equipos[0] if len(equipos) > 0 else 'Equipo 1'
+    equipo_visitante = equipos[1] if len(equipos) > 1 else 'Equipo 2'
 
     t_eventos = [0]
     score_loc = [0]
