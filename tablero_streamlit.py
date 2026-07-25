@@ -10,7 +10,7 @@ import time
 # ==========================================
 # CONFIGURACIÓN DE LA PÁGINA
 # ==========================================
-st.set_page_config(page_title="Tablero Handball Live", layout="wide")
+st.set_page_config(page_title="Dashboard Handball", layout="wide")
 st.title("📊 Análisis Táctico en Vivo")
 
 IMAGEN_PORTERIA = 'NS_Goal_handball.png'
@@ -89,7 +89,7 @@ if not df.empty:
 # ==========================================
 # 3. MÉTRICAS SEPARADAS POR EQUIPO
 # ==========================================
-st.markdown("### 📊 Rendimiento por Equipo")
+st.markdown("### Rendimiento por Equipo")
 
 if not df.empty and 'Equipo' in df.columns:
     equipos_presentes = df['Equipo'].dropna().unique()
@@ -283,18 +283,18 @@ def plot_momentum(df_all):
 col_izq, col_der = st.columns(2)
 
 with col_izq:
-    st.markdown("### 🏟️ Origen de la Acción")
+    st.markdown("### Origen de la Acción")
     fig_cancha = plot_cancha(df)
     st.pyplot(fig_cancha)
 
 with col_der:
-    st.markdown("### 🥅 Zonas de Definición")
+    st.markdown("### Zonas de Definición")
     fig_porteria = plot_porteria(df)
     st.pyplot(fig_porteria)
 
 st.divider()
 
-st.markdown("### 📈 Tendencia y Rachas (Momentum)")
+st.markdown("### 📈 Momentum del Partido")
 if not df_vivo.empty:
     fig_momentum = plot_momentum(df_vivo)
     st.pyplot(fig_momentum)
