@@ -18,24 +18,45 @@ IMAGEN_CANCHA = 'NS_ui_Balonmano_BL_V_T.jpg'
 COLOR_LOC = 'green'
 COLOR_VIS = 'blue'
 
-# URL OFICIAL DE TU GOOGLE SHEET (Terminación /export?format=csv)
-URL_BASE = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT-7qq_XxqcKG6Lb4YewwOeVF8M1Atyh9qRvG7uqI4lGAQMCSD4pyTNScIQsDVAh_UAScQEG6jPg3W1/pub?gid=0&single=true&output=csv"
+# ==========================================
+# 🚨 PEGA AQUÍ CUALQUIER ENLACE DE TU GOOGLE SHEET 
+# ==========================================
+URL_USUARIO = "https://docs.google.com/spreadsheets/d/1PFpl8nYFD1-It3I5ArlY1rNPPDHnYARttgbH3bOZyQ0/edit?usp=sharing"
 
 # ==========================================
-# 0. AUTO-REFRESCO (Cada 5 segundos = 5000 ms)
+# TRADUCTOR INTELIGENTE DE URL
 # ==========================================
-st_autorefresh(interval=5000, limit=None, key="data_refresh")
+def obtener_url_csv(url):
+    if "/edit" in url:
+        return url.split("/edit")[0] + "/export?format=csv"
+    elif "pubhtml" in url:
+        return url.replace("pubhtml", "pub?output=csv")
+    elif "/pub?" in url and "output=csv" not in url:
+        return url + "&output=csv"
+    return url
+
+URL_OFICIAL = obtener_url_csv(URL_USUARIO)
 
 # ==========================================
-# 1. CONEXIÓN A DATOS 
+# 0. AUTO-REFRESCO (Cada 4 segundos)
+# ==========================================
+st_autorefresh(interval=4000, limit=None, key="data_refresh")
+
+# ==========================================
+# 1. CONEXIÓN A DATOS (Con alerta de errores)
 # ==========================================
 def load_data():
     try:
-        url_nocache = f"{URL_BASE}&_t={int(time.time())}"
+        # Forzamos a que no use caché añadiendo el milisegundo actual
+        conector = "&" if "?" in URL_OFICIAL else "?"
+        url_nocache = f"{URL_OFICIAL}{conector}_t={int(time.time())}"
+        
         df_temp = pd.read_csv(url_nocache)
         df_temp = df_temp.dropna(how='all')
         return df_temp
     except Exception as e:
+        # AHORA SÍ VEREMOS EL ERROR EN PANTALLA
+        st.error(f"🚨 No se pudo conectar a Google Sheets. Revisa el enlace. Detalle técnico: {e}")
         return pd.DataFrame(columns=['Equipo', 'Fase', 'Resultado', 'Tiempo', 'Periodo', 'Lado', 'Coord Lado', 'Zona', 'Coord Porteria'])
 
 df_vivo = load_data()
@@ -93,7 +114,7 @@ st.divider()
 # ==========================================
 def plot_cancha(df_filtrado):
     fig, ax = plt.subplots(figsize=(6, 10))
-    fig.patch.set_facecolor('white') # Forzar fondo blanco
+    fig.patch.set_facecolor('white') 
     
     try:
         img = mpimg.imread(IMAGEN_CANCHA)
@@ -121,7 +142,6 @@ def plot_cancha(df_filtrado):
         goles = df_cancha[df_cancha['Resultado'] == 'Gol']
         no_goles = df_cancha[df_cancha['Resultado'] != 'Gol']
 
-        # Sin leyendas
         ax.scatter(no_goles['PX'], no_goles['PY'], c='white', marker='X', s=100, alpha=0.9, edgecolors='black')
         ax.scatter(goles['PX'], goles['PY'], c='#00e676', s=120, edgecolors='black', linewidth=1.5)
 
@@ -130,7 +150,7 @@ def plot_cancha(df_filtrado):
 
 def plot_porteria(df_filtrado):
     fig, ax = plt.subplots(figsize=(10, 5))
-    fig.patch.set_facecolor('white') # Forzar fondo blanco
+    fig.patch.set_facecolor('white') 
     
     try:
         img = mpimg.imread(IMAGEN_PORTERIA)
@@ -151,7 +171,6 @@ def plot_porteria(df_filtrado):
         goles = df_tiros[df_tiros['Resultado'] == 'Gol']
         paradas = df_tiros[df_tiros['Resultado'] == 'Parada']
         
-        # HEATMAP: Se calcula con Goles + Paradas (Todos los tiros a puerta)
         tiros_heatmap = df_tiros[df_tiros['Resultado'].isin(['Gol', 'Parada'])]
 
         if len(tiros_heatmap) > 0:
@@ -162,7 +181,6 @@ def plot_porteria(df_filtrado):
             heatmap_suave[heatmap_suave < 0.05] = np.nan
             ax.imshow(heatmap_suave, extent=[0, 100, 100, 0], cmap='inferno', alpha=0.65)
 
-        # Sin leyendas
         if len(paradas) > 0:
             ax.scatter(paradas['PX'], paradas['PY'], c='white', marker='X', s=100, alpha=0.9, edgecolors='black')
         if len(goles) > 0:
@@ -220,7 +238,6 @@ def plot_momentum(df_all):
         t_eventos.append(t); score_loc.append(marcador_L)
         score_vis.append(marcador_V); momentum.append(mom_val)
 
-    # CORRECCIÓN MOMENTUM: Cortar en el minuto de la última acción del partido (no forzar al 60)
     minuto_actual = df_mom['match_min'].max() if not df_mom.empty else 0
     
     t_eventos.append(minuto_actual); score_loc.append(marcador_L)
@@ -232,14 +249,13 @@ def plot_momentum(df_all):
     mom_negativo = np.where(mom_arr < 0, mom_arr, 0)
 
     fig, (ax_marcador, ax_momentum) = plt.subplots(2, 1, figsize=(14, 6), gridspec_kw={'height_ratios': [2, 1]}, sharex=True)
-    fig.patch.set_facecolor('white') # Forzar fondo blanco
+    fig.patch.set_facecolor('white') 
     fig.subplots_adjust(hspace=0.05)
 
     ax_marcador.step(t_arr, score_loc, where='post', color=COLOR_LOC, linewidth=3)
     ax_marcador.step(t_arr, score_vis, where='post', color=COLOR_VIS, linewidth=3)
     ax_marcador.axvline(x=30, color='black', linestyle='--', alpha=0.5) 
     
-    # Sin título ni leyendas
     ax_marcador.set_ylabel('Goles', fontsize=10, fontweight='bold')
     ax_marcador.grid(True, linestyle='--', alpha=0.4)
 
@@ -255,7 +271,6 @@ def plot_momentum(df_all):
     ax_momentum.set_ylim(-max_mom, max_mom)
     ax_momentum.set_yticks([]) 
     
-    # El eje X sigue mostrando 0 a 60 (o más si hay prórroga), pero la línea se detiene en el tiempo actual
     eje_x_max = max(60, minuto_actual)
     ax_marcador.set_xlim(0, eje_x_max)
     ax_marcador.set_xticks(np.arange(0, eje_x_max + 5, 5))
