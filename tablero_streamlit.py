@@ -18,8 +18,12 @@ IMAGEN_CANCHA = 'NS_ui_Balonmano_BL_V_T.jpg'
 COLOR_LOC = 'green'
 COLOR_VIS = 'blue'
 
-# URL OFICIAL DE TU GOOGLE SHEET
-URL_BASE = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT-7qq_XxqcKG6Lb4YewwOeVF8M1Atyh9qRvG7uqI4lGAQMCSD4pyTNScIQsDVAh_UAScQEG6jPg3W1/pub?gid=0&single=true&output=csv"
+# ==========================================
+# 🚨 URL DE GOOGLE SHEETS 
+# ==========================================
+# IMPORTANTE: Reemplaza este enlace por tu enlace de Compartir con la terminación /export?format=csv
+# Por ahora dejé el tuyo anterior, pero cámbialo para evitar el retraso de 5 minutos de Google.
+URL_BASE = "https://docs.google.com/spreadsheets/d/1PFpl8nYFD1-It3I5ArlY1rNPPDHnYARttgbH3bOZyQ0/export?format=csv"
 
 # ==========================================
 # 0. AUTO-REFRESCO (Cada 5 segundos = 5000 ms)
@@ -27,11 +31,11 @@ URL_BASE = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT-7qq_XxqcKG6Lb4Yew
 st_autorefresh(interval=5000, limit=None, key="data_refresh")
 
 # ==========================================
-# 1. CONEXIÓN A DATOS (Sin Caché para forzar tiempo real)
+# 1. CONEXIÓN A DATOS 
 # ==========================================
 def load_data():
     try:
-        # Se agrega un timestamp a la URL para burlar el caché de 5 minutos de Google Sheets
+        # Forzamos a que no use caché de navegador
         url_nocache = f"{URL_BASE}&_t={int(time.time())}"
         df_temp = pd.read_csv(url_nocache)
         df_temp = df_temp.dropna(how='all')
@@ -59,7 +63,6 @@ fase_sel = st.sidebar.selectbox("2. Fase de Juego", lista_fases)
 resultado_sel = st.sidebar.selectbox("3. ¿Qué pasó?", lista_resultados)
 lado_sel = st.sidebar.selectbox("4. Lado de la Cancha", lista_lados)
 
-# Aplicar filtros
 df = df_vivo.copy()
 if not df.empty:
     if equipo_sel != 'Todos': df = df[df['Equipo'] == equipo_sel]
@@ -84,14 +87,14 @@ if not df.empty and 'Equipo' in df.columns:
         c2.metric("Paradas", len(df_eq[df_eq['Resultado'] == 'Parada']))
         c3.metric("Fallos", len(df_eq[df_eq['Resultado'] == 'Fallo']))
         c4.metric("Pérdidas", len(df_eq[df_eq['Resultado'] == 'Perdida']))
-        st.write("") # Espaciador
+        st.write("") 
 else:
     st.info("Esperando datos del partido para calcular métricas...")
 
 st.divider()
 
 # ==========================================
-# 4. FUNCIONES DE DIBUJO (Idénticas a Colab)
+# 4. FUNCIONES DE DIBUJO 
 # ==========================================
 def plot_cancha(df_filtrado):
     fig, ax = plt.subplots(figsize=(6, 10))
@@ -121,8 +124,9 @@ def plot_cancha(df_filtrado):
         goles = df_cancha[df_cancha['Resultado'] == 'Gol']
         no_goles = df_cancha[df_cancha['Resultado'] != 'Gol']
 
-        ax.scatter(no_goles['PX'], no_goles['PY'], c='white', marker='X', s=100, alpha=0.9, edgecolors='black')
-        ax.scatter(goles['PX'], goles['PY'], c='#00e676', s=120, edgecolors='black', linewidth=1.5)
+        ax.scatter(no_goles['PX'], no_goles['PY'], c='white', marker='X', s=100, alpha=0.9, edgecolors='black', label='No Gol')
+        ax.scatter(goles['PX'], goles['PY'], c='#00e676', s=120, edgecolors='black', linewidth=1.5, label='Gol')
+        ax.legend(loc='upper right', fontsize=10)
 
     ax.set_title('Mapa de Ataque', fontweight='bold', fontsize=14, pad=15)
     ax.axis('off')
@@ -143,7 +147,12 @@ def plot_porteria(df_filtrado):
     if len(df_tiros) > 0:
         df_tiros['PX'] = df_tiros['Coord Porteria'].apply(lambda x: float(str(x).split(',')[0]) if ',' in str(x) else np.nan)
         df_tiros['PY'] = df_tiros['Coord Porteria'].apply(lambda x: float(str(x).split(',')[1]) if ',' in str(x) else np.nan)
+        
+        # Limpiar filas sin coordenadas válidas
+        df_tiros = df_tiros.dropna(subset=['PX', 'PY'])
+
         goles = df_tiros[df_tiros['Resultado'] == 'Gol']
+        paradas = df_tiros[df_tiros['Resultado'] == 'Parada']
 
         if len(goles) > 0:
             heatmap, xedges, yedges = np.histogram2d(goles['PX'], goles['PY'], bins=100, range=[[0, 100], [0, 100]])
@@ -152,6 +161,15 @@ def plot_porteria(df_filtrado):
             if np.max(heatmap_suave) > 0: heatmap_suave = heatmap_suave / np.max(heatmap_suave)
             heatmap_suave[heatmap_suave < 0.05] = np.nan
             ax.imshow(heatmap_suave, extent=[0, 100, 100, 0], cmap='inferno', alpha=0.65)
+
+        # NUEVO: Capa de Puntos para la Portería
+        if len(paradas) > 0:
+            ax.scatter(paradas['PX'], paradas['PY'], c='white', marker='X', s=100, alpha=0.9, edgecolors='black', label='Parada')
+        if len(goles) > 0:
+            ax.scatter(goles['PX'], goles['PY'], c='#00e676', s=120, edgecolors='black', linewidth=1.5, label='Gol')
+        
+        if len(goles) > 0 or len(paradas) > 0:
+            ax.legend(loc='upper right', fontsize=10)
 
     ax.set_title('Vulnerabilidad en Portería (Goles)', fontweight='bold', fontsize=14, pad=15)
     ax.set_xlim(0, 100)
@@ -179,7 +197,6 @@ def plot_momentum(df_all):
     df_mom['match_min'] = df_mom.apply(convertir_a_minutos, axis=1)
     goles_df = df_mom[df_mom['Resultado'].astype(str).str.strip().str.lower() == 'gol'].sort_values('match_min')
     
-    # Extraer equipos reales registrados en la base de datos
     equipos = df_mom['Equipo'].dropna().unique()
     equipo_local = equipos[0] if len(equipos) > 0 else 'Equipo 1'
     equipo_visitante = equipos[1] if len(equipos) > 1 else 'Equipo 2'
