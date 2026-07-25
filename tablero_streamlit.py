@@ -19,12 +19,12 @@ COLOR_LOC = 'green'
 COLOR_VIS = 'blue'
 
 # ==========================================
-# 🚨 PEGA AQUÍ CUALQUIER ENLACE DE TU GOOGLE SHEET 
+# ENLACE GOOGLE SHEET 
 # ==========================================
 URL_USUARIO = "https://docs.google.com/spreadsheets/d/1PFpl8nYFD1-It3I5ArlY1rNPPDHnYARttgbH3bOZyQ0/edit?usp=sharing"
 
 # ==========================================
-# TRADUCTOR INTELIGENTE DE URL
+# AJSUTE DE URL
 # ==========================================
 def obtener_url_csv(url):
     if "/edit" in url:
@@ -43,7 +43,7 @@ URL_OFICIAL = obtener_url_csv(URL_USUARIO)
 st_autorefresh(interval=4000, limit=None, key="data_refresh")
 
 # ==========================================
-# 1. CONEXIÓN A DATOS (Con alerta de errores)
+# 1. CONEXIÓN A DATOS
 # ==========================================
 def load_data():
     try:
@@ -304,5 +304,5 @@ else:
 # ==========================================
 # 6. TABLA DE DATOS CRUDOS
 # ==========================================
-with st.expander("Ver Base de Datos Cruda"):
+with st.expander("Base de Datos"):
     st.dataframe(df)
