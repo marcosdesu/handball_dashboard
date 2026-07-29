@@ -11,7 +11,7 @@ import time
 # CONFIGURACIÓN DE LA PÁGINA
 # ==========================================
 st.set_page_config(page_title="Tablero Handball Live", layout="wide")
-st.title("📊 Análisis Táctico en Vivo")
+st.title("Análisis en Vivo")
 
 IMAGEN_PORTERIA = 'NS_Goal_handball.png'
 IMAGEN_CANCHA = 'NS_ui_Balonmano_BL_V_T.jpg'
@@ -297,18 +297,18 @@ def plot_momentum(df_all):
 col_izq, col_der = st.columns(2)
 
 with col_izq:
-    st.markdown("### 🏟️ Origen de la Acción")
+    st.markdown("### Origen")
     fig_cancha = plot_cancha(df)
     st.pyplot(fig_cancha)
 
 with col_der:
-    st.markdown("### 🥅 Zonas de Definición")
+    st.markdown("### Definición")
     fig_porteria = plot_porteria(df)
     st.pyplot(fig_porteria)
 
 st.divider()
 
-st.markdown("### 📈 Tendencia y Rachas (Momentum)")
+st.markdown("### 📈 Momentum")
 if not df_vivo.empty:
     fig_momentum = plot_momentum(df_vivo)
     st.pyplot(fig_momentum)
