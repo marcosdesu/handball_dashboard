@@ -10,21 +10,19 @@ import time
 # ==========================================
 # CONFIGURACIÓN DE LA PÁGINA
 # ==========================================
-st.set_page_config(page_title="Dashboard Handball", layout="wide")
+st.set_page_config(page_title="Tablero Handball Live", layout="wide")
 st.title("📊 Análisis Táctico en Vivo")
 
 IMAGEN_PORTERIA = 'NS_Goal_handball.png'
 IMAGEN_CANCHA = 'NS_ui_Balonmano_BL_V_T.jpg'
-COLOR_LOC = 'green'
-COLOR_VIS = 'blue'
 
 # ==========================================
-# ENLACE GOOGLE SHEET 
+# 🚨 PEGA AQUÍ CUALQUIER ENLACE DE TU GOOGLE SHEET 
 # ==========================================
-URL_USUARIO = "https://docs.google.com/spreadsheets/d/1PFpl8nYFD1-It3I5ArlY1rNPPDHnYARttgbH3bOZyQ0/edit?usp=sharing"
+URL_USUARIO = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT-7qq_XxqcKG6Lb4YewwOeVF8M1Atyh9qRvG7uqI4lGAQMCSD4pyTNScIQsDVAh_UAScQEG6jPg3W1/pub?gid=0&single=true&output=csv"
 
 # ==========================================
-# AJSUTE DE URL
+# TRADUCTOR INTELIGENTE DE URL
 # ==========================================
 def obtener_url_csv(url):
     if "/edit" in url:
@@ -43,11 +41,10 @@ URL_OFICIAL = obtener_url_csv(URL_USUARIO)
 st_autorefresh(interval=4000, limit=None, key="data_refresh")
 
 # ==========================================
-# 1. CONEXIÓN A DATOS
+# 1. CONEXIÓN A DATOS 
 # ==========================================
 def load_data():
     try:
-        # Forzamos a que no use caché añadiendo el milisegundo actual
         conector = "&" if "?" in URL_OFICIAL else "?"
         url_nocache = f"{URL_OFICIAL}{conector}_t={int(time.time())}"
         
@@ -55,7 +52,6 @@ def load_data():
         df_temp = df_temp.dropna(how='all')
         return df_temp
     except Exception as e:
-        # AHORA SÍ VEREMOS EL ERROR EN PANTALLA
         st.error(f"🚨 No se pudo conectar a Google Sheets. Revisa el enlace. Detalle técnico: {e}")
         return pd.DataFrame(columns=['Equipo', 'Fase', 'Resultado', 'Tiempo', 'Periodo', 'Lado', 'Coord Lado', 'Zona', 'Coord Porteria'])
 
@@ -89,7 +85,7 @@ if not df.empty:
 # ==========================================
 # 3. MÉTRICAS SEPARADAS POR EQUIPO
 # ==========================================
-st.markdown("### Rendimiento por Equipo")
+st.markdown("### 📊 Rendimiento por Equipo")
 
 if not df.empty and 'Equipo' in df.columns:
     equipos_presentes = df['Equipo'].dropna().unique()
@@ -215,6 +211,23 @@ def plot_momentum(df_all):
     equipo_local = equipos[0] if len(equipos) > 0 else 'Equipo 1'
     equipo_visitante = equipos[1] if len(equipos) > 1 else 'Equipo 2'
 
+    # === ASIGNACIÓN DINÁMICA DE COLORES ===
+    loc_upper = str(equipo_local).strip().upper()
+    vis_upper = str(equipo_visitante).strip().upper()
+    
+    es_mex_loc = 'MEX' in loc_upper or 'MÉX' in loc_upper
+    es_mex_vis = 'MEX' in vis_upper or 'MÉX' in vis_upper
+    
+    if es_mex_loc:
+        color_loc = '#006847'
+        color_vis = 'blue'
+    elif es_mex_vis:
+        color_loc = 'blue'
+        color_vis = '#006847'
+    else:
+        color_loc = 'red'
+        color_vis = 'blue'
+
     t_eventos = [0]
     score_loc = [0]
     score_vis = [0]
@@ -252,15 +265,16 @@ def plot_momentum(df_all):
     fig.patch.set_facecolor('white') 
     fig.subplots_adjust(hspace=0.05)
 
-    ax_marcador.step(t_arr, score_loc, where='post', color=COLOR_LOC, linewidth=3)
-    ax_marcador.step(t_arr, score_vis, where='post', color=COLOR_VIS, linewidth=3)
+    ax_marcador.step(t_arr, score_loc, where='post', color=color_loc, linewidth=3, label=equipo_local)
+    ax_marcador.step(t_arr, score_vis, where='post', color=color_vis, linewidth=3, label=equipo_visitante)
     ax_marcador.axvline(x=30, color='black', linestyle='--', alpha=0.5) 
     
     ax_marcador.set_ylabel('Goles', fontsize=10, fontweight='bold')
     ax_marcador.grid(True, linestyle='--', alpha=0.4)
+    ax_marcador.legend(fontsize=10, loc='upper left')
 
-    ax_momentum.fill_between(t_arr, 0, mom_positivo, step='post', facecolor=COLOR_LOC, alpha=0.7)
-    ax_momentum.fill_between(t_arr, 0, mom_negativo, step='post', facecolor=COLOR_VIS, alpha=0.7)
+    ax_momentum.fill_between(t_arr, 0, mom_positivo, step='post', facecolor=color_loc, alpha=0.7)
+    ax_momentum.fill_between(t_arr, 0, mom_negativo, step='post', facecolor=color_vis, alpha=0.7)
     ax_momentum.axvline(x=30, color='black', linestyle='--', alpha=0.5)
     ax_momentum.axhline(y=0, color='black', linewidth=1, alpha=0.8)
     ax_momentum.set_xlabel('Tiempo de Juego Acumulado (Minutos)', fontsize=10, fontweight='bold')
@@ -283,18 +297,18 @@ def plot_momentum(df_all):
 col_izq, col_der = st.columns(2)
 
 with col_izq:
-    st.markdown("### Origen de la Acción")
+    st.markdown("### 🏟️ Origen de la Acción")
     fig_cancha = plot_cancha(df)
     st.pyplot(fig_cancha)
 
 with col_der:
-    st.markdown("### Zonas de Definición")
+    st.markdown("### 🥅 Zonas de Definición")
     fig_porteria = plot_porteria(df)
     st.pyplot(fig_porteria)
 
 st.divider()
 
-st.markdown("### 📈 Momentum del Partido")
+st.markdown("### 📈 Tendencia y Rachas (Momentum)")
 if not df_vivo.empty:
     fig_momentum = plot_momentum(df_vivo)
     st.pyplot(fig_momentum)
@@ -304,5 +318,5 @@ else:
 # ==========================================
 # 6. TABLA DE DATOS CRUDOS
 # ==========================================
-with st.expander("Base de Datos"):
+with st.expander("Ver Base de Datos Cruda"):
     st.dataframe(df)
