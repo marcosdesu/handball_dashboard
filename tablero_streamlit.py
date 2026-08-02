@@ -11,7 +11,7 @@ import time
 # CONFIGURACIÓN DE LA PÁGINA
 # ==========================================
 st.set_page_config(page_title="Tablero Handball Live", layout="wide")
-st.title("Análisis en Vivo")
+st.title("📊 Análisis Táctico en Vivo")
 
 IMAGEN_PORTERIA = 'NS_Goal_handball.png'
 IMAGEN_CANCHA = 'NS_ui_Balonmano_BL_V_T.jpg'
@@ -19,7 +19,7 @@ IMAGEN_CANCHA = 'NS_ui_Balonmano_BL_V_T.jpg'
 # ==========================================
 # 🚨 PEGA AQUÍ CUALQUIER ENLACE DE TU GOOGLE SHEET 
 # ==========================================
-URL_USUARIO = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT-7qq_XxqcKG6Lb4YewwOeVF8M1Atyh9qRvG7uqI4lGAQMCSD4pyTNScIQsDVAh_UAScQEG6jPg3W1/pub?gid=0&single=true&output=csv"
+URL_USUARIO = "https://docs.google.com/spreadsheets/d/1PFpl8nYFD1-It3I5ArlY1rNPPDHnYARttgbH3bOZyQ0/edit?usp=sharing"
 
 # ==========================================
 # TRADUCTOR INTELIGENTE DE URL
@@ -297,7 +297,7 @@ def plot_momentum(df_all):
 col_izq, col_der = st.columns(2)
 
 with col_izq:
-    st.markdown("### Origen")
+    st.markdown("### Origen de la Acción")
     fig_cancha = plot_cancha(df)
     st.pyplot(fig_cancha)
 
