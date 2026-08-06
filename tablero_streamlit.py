@@ -11,7 +11,7 @@ import time
 # CONFIGURACIÓN DE LA PÁGINA
 # ==========================================
 st.set_page_config(page_title="Tablero Handball Live", layout="wide")
-st.title("📊 Análisis Táctico en Vivo")
+st.title("Análisis Táctico en Vivo")
 
 IMAGEN_PORTERIA = 'NS_Goal_handball.png'
 IMAGEN_CANCHA = 'NS_ui_Balonmano_BL_V_T.jpg'
